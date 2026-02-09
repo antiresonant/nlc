@@ -19,6 +19,12 @@ LLMs generate probabilistic outputs. Production systems need deterministic guara
 
 NLC applies **relational computational structure** to constrain LLM outputs:
 
+## The Goal
+My goal here is simple: People should now be able to deploy SWE primitives directly from algorithms.
+Similar things have been said by many greats in the field, the latest being [Grady Booch](https://www.youtube.com/watch?v=OfMAtaocvJw)
+
+---
+
 ```
 For each algorithm step:
   Domain {D} → Range {R}
