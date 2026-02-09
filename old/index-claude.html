@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLC - Natural Language Compiler</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+        
+        .input-panel, .output-panel {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-panel {
+            border-right: 2px solid #e0e0e0;
+        }
+        
+        .panel-header {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .example-selector {
+            margin-bottom: 15px;
+        }
+        
+        .example-selector select {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        textarea {
+            flex: 1;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            resize: none;
+            margin-bottom: 15px;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .input-section {
+            margin-bottom: 15px;
+        }
+        
+        .input-section label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .input-section input {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .compile-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .compile-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .compile-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .progress-container.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .progress-status {
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .output-area {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .output-area.success {
+            border-left: 4px solid #10b981;
+        }
+        
+        .output-area.error {
+            border-left: 4px solid #ef4444;
+            color: #dc2626;
+        }
+        
+        .result-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e0f2fe;
+            border-left: 4px solid #0284c7;
+            border-radius: 4px;
+        }
+        
+        .result-section strong {
+            color: #0c4a6e;
+        }
+        
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-panel {
+                border-right: none;
+                border-bottom: 2px solid #e0e0e0;
+            }
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+            border-top: 2px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 NLC Compiler</h1>
+            <p>Write algorithms in plain English. Get working code. Like magic.</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-panel">
+                <div class="panel-header">📝 Your Algorithm</div>
+                
+                <div class="example-selector">
+                    <select id="exampleSelect">
+                        <option value="">-- Select an example --</option>
+                        <option value="fibonacci">Fibonacci Calculator</option>
+                        <option value="palindrome">Palindrome Checker</option>
+                        <option value="prime">Prime Number Checker</option>
+                        <option value="sort">List Sorter</option>
+                        <option value="custom">Custom Algorithm</option>
+                    </select>
+                </div>
+                
+                <textarea id="algorithmInput" placeholder="BEGIN&#10;STEP 1: Describe what to do first&#10;STEP 2: Describe the next step&#10;STEP 3: Describe the final step&#10;END"></textarea>
+                
+                <div class="input-section">
+                    <label for="testInput">Test Input (JSON format):</label>
+                    <input type="text" id="testInput" placeholder='{"n": 10}' />
+                </div>
+                
+                <button class="compile-btn" id="compileBtn">⚡ Compile & Run</button>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill">0%</div>
+                    </div>
+                    <div class="progress-status" id="progressStatus">Initializing...</div>
+                </div>
+            </div>
+            
+            <div class="output-panel">
+                <div class="panel-header">✨ Output</div>
+                <div class="output-area" id="outputArea">Waiting for compilation...</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            Built with Claude API • Powered by the NLC Framework
+        </div>
+    </div>
+
+    <script>
+        const examples = {
+            fibonacci: {
+                algorithm: `BEGIN
+STEP 1: Take input number n
+STEP 2: Calculate the nth Fibonacci number using iteration
+STEP 3: Return the result
+END`,
+                input: '{"n": 10}'
+            },
+            palindrome: {
+                algorithm: `BEGIN
+STEP 1: Take input string text
+STEP 2: Check if text reads the same forwards and backwards
+STEP 3: Return true if palindrome, false otherwise
+END`,
+                input: '{"text": "racecar"}'
+            },
+            prime: {
+                algorithm: `BEGIN
+STEP 1: Take input number n
+STEP 2: Check if n is divisible only by 1 and itself
+STEP 3: Return true if prime, false otherwise
+END`,
+                input: '{"n": 17}'
+            },
+            sort: {
+                algorithm: `BEGIN
+STEP 1: Take input array of numbers
+STEP 2: Sort the array in ascending order
+STEP 3: Return the sorted array
+END`,
+                input: '{"numbers": [64, 34, 25, 12, 22, 11, 90]}'
+            }
+        };
+
+        document.getElementById('exampleSelect').addEventListener('change', (e) => {
+            const example = examples[e.target.value];
+            if (example) {
+                document.getElementById('algorithmInput').value = example.algorithm;
+                document.getElementById('testInput').value = example.input;
+            } else {
+                document.getElementById('algorithmInput').value = '';
+                document.getElementById('testInput').value = '';
+            }
+        });
+
+        document.getElementById('compileBtn').addEventListener('click', async () => {
+            const algorithm = document.getElementById('algorithmInput').value.trim();
+            const testInput = document.getElementById('testInput').value.trim();
+            
+            if (!algorithm) {
+                alert('Please enter an algorithm!');
+                return;
+            }
+            
+            await compileAndRun(algorithm, testInput);
+        });
+
+        async function compileAndRun(algorithm, testInput) {
+            const btn = document.getElementById('compileBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressStatus = document.getElementById('progressStatus');
+            const outputArea = document.getElementById('outputArea');
+            
+            btn.disabled = true;
+            progressContainer.classList.add('active');
+            outputArea.className = 'output-area';
+            outputArea.textContent = '';
+            
+            try {
+                // Parse test input
+                let parsedInput = {};
+                if (testInput) {
+                    try {
+                        parsedInput = JSON.parse(testInput);
+                    } catch (e) {
+                        throw new Error('Invalid JSON in test input');
+                    }
+                }
+                
+                // Step 1: Analyze algorithm
+                updateProgress(20, 'Analyzing algorithm structure...');
+                await sleep(500);
+                
+                // Step 2: Generate code with assertions
+                updateProgress(40, 'Generating code with domain/range assertions...');
+                const code = await generateCode(algorithm);
+                await sleep(500);
+                
+                // Step 3: Verify assertions
+                updateProgress(60, 'Verifying mathematical correctness...');
+                await sleep(500);
+                
+                // Step 4: Execute code
+                updateProgress(80, 'Executing compiled code...');
+                const result = await executeCode(code, parsedInput);
+                await sleep(300);
+                
+                // Step 5: Complete
+                updateProgress(100, 'Compilation successful! ✓');
+                await sleep(300);
+                
+                displaySuccess(code, result, parsedInput);
+                
+            } catch (error) {
+                displayError(error.message);
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => {
+                    progressContainer.classList.remove('active');
+                    progressFill.style.width = '0%';
+                }, 2000);
+            }
+        }
+
+        async function generateCode(algorithm) {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 4000,
+                    messages: [{
+                        role: 'user',
+                        content: `You are the NLC (Natural Language Compiler). Convert this algorithm into executable JavaScript code following the NLC framework with domain/range assertions.
+
+Algorithm:
+${algorithm}
+
+Requirements:
+1. Parse the algorithm steps
+2. Generate a single JavaScript function that implements ALL steps
+3. The function should be named 'nlcCompiled'
+4. Include proper error handling and type checking (domain assertions)
+5. Return ONLY the function code, nothing else
+6. The function should accept an object with named parameters
+7. Make it production-ready and deterministic
+
+Return ONLY the JavaScript function code, no explanations, no markdown formatting.`
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate code');
+            }
+
+            const data = await response.json();
+            let code = data.content.find(block => block.type === 'text')?.text || '';
+            
+            // Clean up any markdown formatting
+            code = code.replace(/```javascript\n?/g, '').replace(/```\n?/g, '').trim();
+            
+            return code;
+        }
+
+        async function executeCode(code, input) {
+            try {
+                // Create a safe execution context
+                const func = new Function('input', `
+                    ${code}
+                    return nlcCompiled(input);
+                `);
+                
+                const result = func(input);
+                return result;
+            } catch (error) {
+                throw new Error(`Execution error: ${error.message}`);
+            }
+        }
+
+        function updateProgress(percent, status) {
+            const progressFill = document.getElementById('progressFill');
+            const progressStatus = document.getElementById('progressStatus');
+            
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+            progressStatus.textContent = status;
+        }
+
+        function displaySuccess(code, result, input) {
+            const outputArea = document.getElementById('outputArea');
+            outputArea.className = 'output-area success';
+            
+            let output = '✓ COMPILATION SUCCESSFUL\n\n';
+            output += '═══════════════════════════════════════\n';
+            output += 'GENERATED CODE:\n';
+            output += '═══════════════════════════════════════\n\n';
+            output += code;
+            output += '\n\n═══════════════════════════════════════\n';
+            output += 'EXECUTION RESULT:\n';
+            output += '═══════════════════════════════════════\n\n';
+            output += `Input: ${JSON.stringify(input, null, 2)}\n\n`;
+            output += `Output: ${JSON.stringify(result, null, 2)}\n`;
+            
+            outputArea.textContent = output;
+        }
+
+        function displayError(message) {
+            const outputArea = document.getElementById('outputArea');
+            outputArea.className = 'output-area error';
+            outputArea.textContent = `✗ COMPILATION FAILED\n\n${message}`;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

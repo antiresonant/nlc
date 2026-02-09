@@ -1,0 +1,8 @@
+{
+  "name": "nlc-compiler",
+  "version": "1.0.0",
+  "description": "Natural Language Compiler - Netlify Functions",
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}
