@@ -290,9 +290,9 @@ If you use NLC in your research or educational materials, please cite:
 
 ## 🙏 Acknowledgments
 
-- Framework inspired by control theory and Bayesian inference
+- Framework inspired by the idea of extracting determinism from probabilistic machine.
 - Built with Claude (Anthropic) API
-- Special thanks to the open source community
+- Special thanks to the open-source community
 
 ---
 
