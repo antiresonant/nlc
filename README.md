@@ -125,7 +125,7 @@ END
 
 **Output**: Production-ready, mathematically verified authentication system.
 
-See full example in [examples/authentication.md](examples/authentication.md)
+See full example in [DEMO](https://nlc-compiler.netlify.app/)
 
 ---
 
@@ -176,7 +176,7 @@ relation_step(R | D):
 3. **Verifiability**: Each step has mathematical guarantees
 4. **Correctness**: Assertions ensure semantic validity
 
-See [PAPER.md](PAPER.md) for full mathematical treatment.
+See [PAPER](https://antiresonant.github.io/nlc-paper/) for full mathematical treatment.
 
 ---
 
@@ -313,4 +313,4 @@ If you find this useful, consider giving it a star! It helps others discover the
 
 ---
 
-**Built with ❤️ for developers, students, and educators worldwide.**
+**Built with ❤️ for developers, students, educators and everyone worldwide.**
