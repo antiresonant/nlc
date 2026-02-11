@@ -447,7 +447,7 @@
                 <div class="panel-header">📝 Your Algorithm</div>
                 
                 <div class="api-info">
-                    ⚡ <strong>Live LLM compilation.</strong> Add your OpenAI API key to see the LLM generate different code each time. Without a key, built-in examples use pre-verified reference implementations.
+                    ⚡ <strong>Live LLM compilation</strong> — powered by the author's OpenAI API key. No key needed. Just hit compile.
                 </div>
                 
                 <div class="example-selector">
@@ -489,13 +489,13 @@
                 <div class="checkbox-section">
                     <label>
                         <input type="checkbox" id="useOwnKeyCheckbox" />
-                        I want to use my own OpenAI API key
+                        Use my own OpenAI API key instead of the author's
                     </label>
                     
                     <div class="api-key-section" id="apiKeySection">
                         <label for="apiKey" style="display: block; margin-bottom: 8px; font-weight: 600;">Your OpenAI API Key:</label>
                         <input type="password" id="apiKey" placeholder="sk-proj-..." style="width: 100%; padding: 10px; border: 2px solid #f59e0b; border-radius: 8px; margin-bottom: 8px;" />
-                        <small style="color: #92400e;">🔒 Your key stays in your browser, never stored. Get one free at <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #b45309; font-weight: 600;">OpenAI Platform</a></small>
+                        <small style="color: #92400e;">🔒 Sent directly to OpenAI from your browser — never touches our server. Get one at <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #b45309; font-weight: 600;">OpenAI Platform</a></small>
                     </div>
                 </div>
                 
@@ -513,14 +513,13 @@
                 <div class="panel-header">✨ Output</div>
                 <div class="output-area" id="outputArea">Select an example or write your own algorithm, then hit Compile.
 
-With an API key: the LLM generates fresh code each time,
-and NLC's assertion loop verifies it.
+The LLM generates fresh code on every compile —
+try the same algorithm multiple times to see
+different valid implementations that all pass
+the same Domain/Range assertions.
 
-Without a key: built-in examples run pre-verified
-reference implementations (clearly labeled).
-
-Try it — compile the same algorithm multiple times
-to see different valid implementations!</div>
+Powered by the author's OpenAI API key.
+No signup or API key needed.</div>
             </div>
         </div>
         
@@ -969,7 +968,7 @@ CODE QUALITY:
                     if (execResult !== null && execResult !== undefined) {
                         updateProgress(100, '✓ Compiled in ' + iterations + ' iteration' + (iterations > 1 ? 's' : '') + '!');
                         await sleep(300);
-                        displaySuccess(code, execResult, parsedInput, { source: 'llm', iterations });
+                        displaySuccess(code, execResult, parsedInput, { source: 'llm', iterations, userKey: !!userApiKey });
                         return;
                     }
                 }
@@ -1010,12 +1009,12 @@ CODE QUALITY:
         }
 
         async function generateCodeFromAPI(algorithm, userApiKey) {
-            // If user provided their own key, call OpenAI directly
+            // If user explicitly chose their own key, call OpenAI directly from browser
             if (userApiKey) {
                 return await callOpenAI(algorithm, userApiKey);
             }
             
-            // Try Netlify Function (author's key)
+            // Default: use author's key via Netlify Function (secure, key never exposed)
             const response = await fetch('/.netlify/functions/compile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1023,48 +1022,67 @@ CODE QUALITY:
             });
 
             if (!response.ok) {
-                throw new Error('Server returned ' + response.status);
+                const errBody = await response.text().catch(() => '');
+                throw new Error('Server error (' + response.status + ')' + (errBody ? ': ' + errBody : ''));
             }
 
             const data = await response.json();
+            if (!data.code) throw new Error('Server returned empty code');
             return data.code;
         }
 
         // The NLC regeneration loop: feed the error back to the LLM
         async function regenerateCode(algorithm, previousCode, errorMessage, userApiKey) {
-            if (!userApiKey) throw new Error('No API key for regeneration');
+            if (userApiKey) {
+                // Direct call with user's key
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + userApiKey
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [{
+                            role: 'system',
+                            content: NLC_SYSTEM_PROMPT
+                        }, {
+                            role: 'user',
+                            content: 'Convert this algorithm:\n\n' + algorithm + '\n\n' + NLC_USER_SUFFIX
+                        }, {
+                            role: 'assistant',
+                            content: previousCode
+                        }, {
+                            role: 'user',
+                            content: 'The code above failed with this error:\n\n' + errorMessage + '\n\nFix the code. Return ONLY the corrected JavaScript function. No markdown, no explanation.'
+                        }],
+                        temperature: 0.15
+                    })
+                });
+
+                if (!response.ok) throw new Error('Regeneration API error');
+                const data = await response.json();
+                let code = data.choices[0].message.content;
+                code = code.replace(/```javascript\n?/g, '').replace(/```js\n?/g, '').replace(/```\n?/g, '').trim();
+                return code;
+            }
             
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            // Default: use author's key via Netlify Function
+            const response = await fetch('/.netlify/functions/compile', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + userApiKey
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o',
-                    messages: [{
-                        role: 'system',
-                        content: NLC_SYSTEM_PROMPT
-                    }, {
-                        role: 'user',
-                        content: 'Convert this algorithm:\n\n' + algorithm + '\n\n' + NLC_USER_SUFFIX
-                    }, {
-                        role: 'assistant',
-                        content: previousCode
-                    }, {
-                        role: 'user',
-                        content: 'The code above failed with this error:\n\n' + errorMessage + '\n\nFix the code. Return ONLY the corrected JavaScript function. No markdown, no explanation.'
-                    }],
-                    temperature: 0.15
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    algorithm,
+                    previousCode,
+                    error: errorMessage,
+                    regenerate: true
                 })
             });
 
-            if (!response.ok) throw new Error('Regeneration API error');
-
+            if (!response.ok) throw new Error('Regeneration server error');
             const data = await response.json();
-            let code = data.choices[0].message.content;
-            code = code.replace(/```javascript\n?/g, '').replace(/```\n?/g, '').trim();
-            return code;
+            if (!data.code) throw new Error('Server returned empty code');
+            return data.code;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -1739,13 +1757,14 @@ statemachine: `function nlcCompiled(input) {
             let output = '';
             
             if (meta.source === 'llm') {
+                const keyLabel = meta.userKey ? 'your API key' : "author's API key";
                 output += '✓ NLC COMPILATION SUCCESSFUL';
-                output += '  [LLM-generated · ' + meta.iterations + ' iteration' + (meta.iterations > 1 ? 's' : '') + ']\n\n';
+                output += '  [LLM-generated via ' + keyLabel + ' · ' + meta.iterations + ' iteration' + (meta.iterations > 1 ? 's' : '') + ']\n\n';
             } else {
                 output += '⚠ REFERENCE IMPLEMENTATION';
-                output += '  [API unavailable — showing pre-verified NLC output]\n';
+                output += '  [Netlify function unavailable — showing pre-verified NLC output]\n';
                 output += '  Reason: ' + (meta.reason || 'unknown') + '\n';
-                output += '  → Add your OpenAI API key to see live LLM compilation\n\n';
+                output += '  → This is a fallback. The live version at nlc-compiler.netlify.app uses the author\'s API key.\n\n';
             }
             
             output += '═══════════════════════════════════════\n';
